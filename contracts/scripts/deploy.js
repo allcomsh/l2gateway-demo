@@ -57,7 +57,7 @@ async function main() {
 
   // Set the stub as the resolver for test.test
   await ens.setResolver(namehash.hash('test.test'), stub.address);
-  await ens.setResolver(namehash.hash('snoopy.beagles'), stub2.address);
+  await ens.setResolver(namehash.hash('snoopy.beagles'), stub.address);
 
   console.log(`${OVM_ADDRESS_MANAGER} OptimismResolverStub deployed at ${stub.address}`);
   console.log(`${OVM_ADDRESS_MANAGER} OptimismResolverStub deployed at ${stub2.address}`);
