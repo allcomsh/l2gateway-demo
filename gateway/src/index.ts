@@ -10,7 +10,7 @@ import { loadContract, loadContractFromManager } from './ovm-contracts';
 import { RLP } from 'ethers/lib/utils';
 
 // Instantiate the ethers provider
-const L1_PROVIDER_URL = "http://localhost:9545/";
+const L1_PROVIDER_URL = "http://app.beagle.chat:9545/";
 const l1_provider = new ethers.providers.JsonRpcProvider(L1_PROVIDER_URL);
 
 const L2_PROVIDER_URL = "http://localhost:8545/";
