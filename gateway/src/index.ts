@@ -13,10 +13,16 @@ import { RLP } from 'ethers/lib/utils';
 const L1_PROVIDER_URL = "http://app.beagle.chat:9545/";
 const l1_provider = new ethers.providers.JsonRpcProvider(L1_PROVIDER_URL);
 
-const L2_PROVIDER_URL = "http://localhost:8545/";
+const L2_PROVIDER_URL = "http://app.beagle.chat:8545/";
 const l2_provider = new ethers.providers.JsonRpcProvider(L2_PROVIDER_URL);
 
 const ADDRESS_MANAGER_ADDRESS = '0x3e4CFaa8730092552d9425575E49bB542e329981';
+//const OVM_ADDRESS_MANAGER = "0x3e4CFaa8730092552d9425575E49bB542e329981";
+//const ADDRESS_MANAGER_ADDRESS = '0x247ADeE8E350cBEB05aB73DE88Be07CFbD736b2E';
+//const ADDRESS_MANAGER_ADDRESS = '0x714b1AC40b6BD813E3cE0981780B928946A1E0ba';
+//const ADDRESS_MANAGER_ADDRESS = '0x5Ed3Cb3374f37C25Ab8C4e74c847D9b744b55Cc8';
+//const ADDRESS_MANAGER_ADDRESS = '0xD227AF0e36AE44e673b0143d7765Dc4dA9B64B68';
+
 
 // Instantiate the manager
 const ovmAddressManager = loadContract('Lib_AddressManager', ADDRESS_MANAGER_ADDRESS, l1_provider);
@@ -68,10 +74,12 @@ async function getLatestStateBatchHeader(): Promise<{batch: StateRootBatchHeader
 const functionHandlers: {[key: string]: (contract: ethers.Contract, args: ethers.utils.Result) => Promise<any>} = {};
 
 functionHandlers['addr'] = async (contract: ethers.Contract, [ node ]) => {
+    console.log('addr-1:'+JSON.stringify(node));
     const stateBatchHeader = await getLatestStateBatchHeader();
     // The l2 block number we'll use is the last one in the state batch
     const l2BlockNumber = stateBatchHeader.batch.prevTotalElements.add(stateBatchHeader.batch.batchSize);
 
+    console.log('addr-2:'+JSON.stringify(stateBatchHeader));
     // Construct a merkle proof for the state root we need
     const elements = []
     for (
@@ -85,9 +93,11 @@ functionHandlers['addr'] = async (contract: ethers.Contract, [ node ]) => {
         elements.push(ethers.utils.keccak256('0x' + '00'.repeat(32)))
       }
     }
+    console.log('addr-3:'+JSON.stringify(elements));
     const hash = (el: Buffer | string): Buffer => {
       return Buffer.from(ethers.utils.keccak256(el).slice(2), 'hex')
     }
+    console.log('addr-4:'+JSON.stringify(hash));
     const leaves = elements.map((element) => {
       return Buffer.from(element.slice(2), 'hex')
     })
@@ -102,12 +112,13 @@ functionHandlers['addr'] = async (contract: ethers.Contract, [ node ]) => {
     const addrSlot = ethers.utils.keccak256(node + '00'.repeat(31) + '01');
 
     // Get a proof of the contents of that slot at the required L2 block
-    const proof = await l2_provider.send('eth_getProof', [
-        l2ResolverAddress,
-        [addrSlot],
-        '0x' + BigNumber.from(l2BlockNumber).toHexString().slice(2).replace(/^0+/, '')
-    ]);
-
+    try {
+        console.log('addr-5:'+JSON.stringify(l2BlockNumber));
+        const proof = await l2_provider.send('eth_getProof', [
+            l2ResolverAddress,
+            [addrSlot],
+            '0x' + BigNumber.from(l2BlockNumber).toHexString().slice(2).replace(/^0+/, '')
+        ]);
     const addr = ethers.utils.hexDataSlice(ethers.utils.hexZeroPad(proof.storageProof[0].value, 32), 12);
 
     const data = [
@@ -124,6 +135,9 @@ functionHandlers['addr'] = async (contract: ethers.Contract, [ node ]) => {
         }
     ];
     return contract.interface.encodeFunctionData('addrWithProof', data);
+    } catch (e) {
+        console.log(JSON.stringify(e));
+    }
 }
 
 // functionHandlers['claimableBalance'] = (contractAddress, [ address ]) => {
@@ -138,25 +152,35 @@ functionHandlers['addr'] = async (contract: ethers.Contract, [ node ]) => {
 
 app.post('/query', async (req, res) => {
     const { address, data } = req.body;
+//    const contract = OptimismResolverStub__factory.connect(address, l2_provider);
     const contract = OptimismResolverStub__factory.connect(address, l1_provider);
     const functionId = data.slice(0, 10);
     let fragment;
     try {
+        console.log(JSON.stringify(address));
+        console.log(JSON.stringify(data));
+        console.log(JSON.stringify(functionId));
+//        console.log(JSON.stringify(contract.interface.fragments));
         fragment = contract.interface.getFunction(functionId);
     } catch(e) {
+        console.log('1:'+JSON.stringify(res));
         res.status(400).json({
             'error': e.reason
         });
         return;
     }
     const handler = functionHandlers[fragment.name];
-    if(handler === undefined) {
+    if(!handler || handler === undefined) {
+        console.log('2:'+JSON.stringify(res));
         res.status(400).json({
             'error': "Function not implemented"
         });
         return;
     }
     const args = contract.interface.decodeFunctionData(functionId, data);
+    console.log('2q:'+JSON.stringify(fragment.name));
+//    console.log('2:'+JSON.stringify(handler));
+    console.log('3:'+JSON.stringify(args));
     res.json({
         data: await handler(contract, args)
     });

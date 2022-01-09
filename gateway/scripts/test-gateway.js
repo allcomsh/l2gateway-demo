@@ -3,8 +3,9 @@ const fetch = require('node-fetch');
 const namehash = require('eth-ens-namehash');
 const resolverStubABI = require('../abis/OptimismResolverStub.json').abi;
 
-const PROVIDER_URL = "http://localhost:9545/";
-const RESOLVER_STUB_ADDRESS = '0x2b57c4aB6D64a2befcb67D46bdc302809418bd1c';
+const PROVIDER_URL = "http://app.beagle.chat:9545/";
+//const RESOLVER_STUB_ADDRESS = '0x2b57c4aB6D64a2befcb67D46bdc302809418bd1c';
+const RESOLVER_STUB_ADDRESS = '0xa10542f51041645d61a49121383FD80b0D18D986';
 
 
 /*
